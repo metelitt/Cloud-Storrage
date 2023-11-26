@@ -9,6 +9,8 @@ export class AuthService {
   constructor(private usersService: UsersService,private jwtService:JwtService) {}
 
   async validateUser(email: string, password: string): Promise<any> {
+    console.log('Email:', email);
+    console.log('Password:', password);
     const user = await this.usersService.findByEmail(email);
 
     if (user && user.password === password) {

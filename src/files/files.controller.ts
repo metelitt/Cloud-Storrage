@@ -1,34 +1,38 @@
 import {
   Controller,
   Post,
-  Body,
   UseInterceptors,
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
   Get,
   UseGuards,
+  Query,
+  Delete,
 } from '@nestjs/common';
 import { FilesService } from './files.service';
-import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { fileStorage } from './storage';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
+import { UserId } from 'src/auth/decorators/user-id.decorator';
+import { FileType } from './entities/file.entity';
 
 @Controller('files')
 @ApiTags('files')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Get()
-  findAll() {
-    return this.filesService.findAll();
+  findAll(@UserId() userId: number, @Query('type') fileType: FileType) {
+    return this.filesService.findAll(userId, fileType);
   }
 
   @Post()
   @UseInterceptors(
-    FilesInterceptor('file', 5, {
+    FilesInterceptor('file', 1, {
       storage: fileStorage,
     }),
   )
@@ -51,7 +55,17 @@ export class FilesController {
       }),
     )
     file: Express.Multer.File,
+    @UserId() userId: number,
   ) {
-    return file;
+    try {
+      return this.filesService.create(file, userId);
+    } catch (error) {
+      console.error('Error creating file:', error);
+      throw new Error('Failed to create file');
+    }
+  }
+  @Delete()
+  remove(@UserId() userId: number, @Query('ids') ids: string) {
+    return this.filesService.remove(userId, ids);
   }
 }
